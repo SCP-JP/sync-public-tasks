@@ -3,7 +3,6 @@
 #   date : 2024/01/20
 from datetime import datetime
 from time import sleep
-from pprint import pprint
 
 import dotenv
 import os
@@ -18,10 +17,12 @@ SOURCE_DATABASE_ID = os.environ.get("SOURCE_DATABASE_ID")
 DESTINATION_DATABASE_ID = os.environ.get("DESTINATION_DATABASE_ID")
 TEST_DATABASE_ID = os.environ.get("TEST_DATABASE_ID")
 
+# スリープ時間
 DURATION = 60 * 60 * 24
 
 
 def get_all_entries(client: Client, database_id: str, query: dict = None):
+    """next_cursorを自動で処理して、全てのエントリを取得する"""
     # 初回取得
     params = {
         "database_id": database_id,
@@ -46,6 +47,7 @@ def get_all_entries(client: Client, database_id: str, query: dict = None):
 
 
 def build_properties(task: dict):
+    """create/update用のpropertiesを作成する"""
     return {
         "タイトル": {
             "title": [
@@ -112,6 +114,7 @@ def main():
         }
     )
 
+    # 既知のタスクIDをリスト化
     known_tasks = {
         task['properties']['sourceId']['rich_text'][0]['plain_text']: task["id"]
         for task in destination_tasks
@@ -123,15 +126,18 @@ def main():
     # ソースDBのタスクごとに、ミラー先DBに存在しない場合は追加する
     for task in source_tasks:
         if task['id'] in known_tasks:
-            print(f"Update: {task['properties']['タイトル']['title'][0]['plain_text']}")
             # 既知のタスクは更新
+            print(f"Update: {task['properties']['タイトル']['title'][0]['plain_text']}")
+            # 更新
             client.pages.update(
                 page_id=known_tasks[task['id']],
                 properties=build_properties(task)
             )
         else:
+            # 未知のタスクは作成
             print(f"Create: {task['properties']['タイトル']['title'][0]['plain_text']}")
 
+            # propertiesにsourceIdを追加
             properties = build_properties(task)
             properties["sourceId"] = {
                 "rich_text": [
@@ -143,8 +149,7 @@ def main():
                     }
                 ]
             }
-
-            # 未知のタスクは作成
+            # 作成
             client.pages.create(
                 parent={
                     "database_id": DESTINATION_DATABASE_ID
