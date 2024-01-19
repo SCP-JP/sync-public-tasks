@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  main:
+    build: .
+    container_name: 'sync-public-task-main-script'
+    tty: true
+    restart: always
+    volumes:
+      - .:/app
